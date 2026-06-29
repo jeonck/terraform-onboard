@@ -64,6 +64,12 @@ hasCJKLanguage = true
       displayPagination = true
 
 [[menu.main]]
+  name = "검색"
+  weight = 0
+  [menu.main.params]
+    type = "search"
+
+[[menu.main]]
   name = "가이드"
   pageRef = "/docs"
   weight = 1
