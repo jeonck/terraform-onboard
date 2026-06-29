@@ -32,8 +32,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: false
           fetch-depth: 0
+
+      - name: Cache Hugo resources
+        uses: actions/cache@v4
+        with:
+          path: /tmp/hugo_cache
+          key: hugo-resources-${{ env.HUGO_VERSION }}-${{ hashFiles('hugo.toml') }}
+          restore-keys: |
+            hugo-resources-${{ env.HUGO_VERSION }}-
+            hugo-resources-
 
       - name: Setup Pages
         id: pages
@@ -41,7 +50,7 @@ jobs:
 
       - name: Build with Hugo
         env:
-          HUGO_CACHEDIR: ${{ runner.temp }}/hugo_cache
+          HUGO_CACHEDIR: /tmp/hugo_cache
           HUGO_ENVIRONMENT: production
         run: |
           hugo \

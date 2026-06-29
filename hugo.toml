@@ -1,6 +1,7 @@
 baseURL = "https://jeonck.github.io/terraform-onboard/"
 title = "Terraform 실무 온보딩 가이드"
 theme = "hextra"
+defaultContentLanguage = "ko"
 enableRobotsTXT = true
 enableGitInfo = false
 hasCJKLanguage = true
@@ -44,6 +45,7 @@ hasCJKLanguage = true
     [params.search.flexsearch]
       index = "content"
       tokenize = "forward"
+      version = "0.8.143"
 
   [params.toc]
     displayTags = true
