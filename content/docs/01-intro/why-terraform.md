@@ -9,7 +9,7 @@ AWS 콘솔에서 EC2를 만들고, Security Group을 설정하고, S3 버킷을 
 
 ```mermaid
 flowchart LR
-    subgraph 수작업 운영["❌ 수작업 운영 (콘솔 클릭)"]
+    subgraph manual["❌ 수작업 운영 (콘솔 클릭)"]
         direction TB
         A1[콘솔 접속] --> B1[리소스 생성]
         B1 --> C1[누가 만들었지?]
@@ -27,9 +27,9 @@ flowchart LR
         E2 --> F2[Git에 이력 남음]
     end
 
-    수작업 운영 -- "전환" --> iac
+    manual -- "전환" --> iac
 
-    style 수작업 운영 fill:#fee2e2
+    style manual fill:#fee2e2
     style iac fill:#dcfce7
 ```
 
