@@ -1,0 +1,80 @@
+baseURL = "https://jeonck.github.io/terraform-onboard/"
+title = "Terraform 실무 온보딩 가이드"
+theme = "hextra"
+enableRobotsTXT = true
+enableGitInfo = false
+hasCJKLanguage = true
+
+[markup]
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+      unsafe = true
+
+[outputs]
+  home = ["html"]
+  page = ["html"]
+  section = ["html", "rss"]
+
+[params]
+  description = "현업에서 바로 쓰는 Terraform 실전 온보딩 가이드 — 입문부터 운영 자동화까지"
+  displayUpdatedDate = true
+  dateFormat = "2006년 1월 2일"
+
+  [params.navbar]
+    displayTitle = true
+    displayLogo = false
+    width = "full"
+
+  [params.page]
+    width = "normal"
+
+  [params.theme]
+    default = "system"
+    displayToggle = true
+
+  [params.footer]
+    enable = true
+    displayCopyright = true
+    displayPoweredBy = false
+    width = "normal"
+
+  [params.search]
+    enable = true
+    type = "flexsearch"
+    [params.search.flexsearch]
+      index = "content"
+      tokenize = "forward"
+
+  [params.toc]
+    displayTags = true
+
+  [params.highlight.copy]
+    enable = true
+    display = "hover"
+
+[[menu.main]]
+  name = "가이드"
+  pageRef = "/docs"
+  weight = 1
+
+[[menu.main]]
+  name = "트랙별 학습"
+  pageRef = "/docs/tracks"
+  weight = 2
+
+[[menu.main]]
+  name = "실습 랩"
+  pageRef = "/docs/labs"
+  weight = 3
+
+[[menu.main]]
+  name = "참고자료"
+  pageRef = "/docs/reference"
+  weight = 4
+
+[[menu.main]]
+  name = "GitHub"
+  url = "https://github.com/jeonck/terraform-onboard"
+  weight = 5
+  [menu.main.params]
+    icon = "github"
