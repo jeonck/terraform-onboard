@@ -5,6 +5,47 @@ weight: 1
 
 Terraform 코드는 여섯 가지 핵심 블록으로 구성됩니다. 각각의 역할을 이해하면 어떤 코드든 읽을 수 있습니다.
 
+```mermaid
+flowchart LR
+    classDef config fill:#fff8e1,stroke:#f9a825,color:#5f3700
+    classDef creator fill:#e3f2fd,stroke:#1976d2,color:#0d47a1
+    classDef observer fill:#e8f5e9,stroke:#388e3c,color:#1b5e20
+    classDef output fill:#fce4ec,stroke:#c62828,color:#b71c1c
+
+    subgraph inputs["⚙️ 설정 레이어"]
+        VAR["📝 variable\n외부 입력값"]
+        LOC["🧮 locals\n내부 계산값"]
+        PROV["🔌 provider\n클라우드 연결"]
+    end
+
+    subgraph action["🛠️ 동작 레이어"]
+        RES["🏗️ resource\n창조자 — 직접 생성·관리"]
+        DATA["🔍 data\n관찰자 — 기존 리소스 조회"]
+    end
+
+    subgraph cloud["☁️ 외부 인프라 AWS 등"]
+        NEW["Terraform 관리 리소스\nState에 기록됨"]
+        EXIST["기존 리소스\n콘솔·타팀 생성"]
+    end
+
+    OUT["📤 output\n외부 제공 창구"]
+    EXT(["🌐 다른 모듈 · CI/CD"])
+
+    VAR --> LOC
+    VAR & LOC & PROV --> RES
+    VAR & LOC & PROV --> DATA
+    RES -- "생성·관리" --> NEW
+    NEW -- "ID · IP · ARN 노출" --> OUT
+    DATA -- "조회" --> EXIST
+    EXIST -- "ID · IP · ARN 반환" --> DATA
+    OUT -.->|"활용"| EXT
+
+    class VAR,LOC,PROV config
+    class RES,NEW creator
+    class DATA,EXIST observer
+    class OUT output
+```
+
 ## provider
 
 **목적**: Terraform이 특정 클라우드/서비스와 통신하기 위한 플러그인 설정
