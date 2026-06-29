@@ -52,6 +52,15 @@ hasCJKLanguage = true
     enable = true
     display = "hover"
 
+  [params.blog]
+    [params.blog.list]
+      displayTags = true
+      sortBy = "date"
+      sortOrder = "desc"
+      pagerSize = 10
+    [params.blog.article]
+      displayPagination = true
+
 [[menu.main]]
   name = "가이드"
   pageRef = "/docs"
@@ -73,8 +82,13 @@ hasCJKLanguage = true
   weight = 4
 
 [[menu.main]]
+  name = "블로그"
+  pageRef = "/blog"
+  weight = 5
+
+[[menu.main]]
   name = "GitHub"
   url = "https://github.com/jeonck/terraform-onboard"
-  weight = 5
+  weight = 6
   [menu.main.params]
     icon = "github"
