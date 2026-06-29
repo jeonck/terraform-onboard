@@ -99,7 +99,7 @@ apply 이후:
 
 ## "원하는 상태(desired state)" 개념
 
-Terraform은 **선언형(Declarative)** 방식으로 동작합니다.
+Terraform은 **선언형**(Declarative) 방식으로 동작합니다.
 
 ```hcl
 # "나는 이런 인프라를 원한다" 고 선언만 합니다

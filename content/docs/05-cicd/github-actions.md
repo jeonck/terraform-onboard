@@ -211,7 +211,7 @@ jobs:
 | `TF_VAR_db_password` | DB 비밀번호 등 민감값 | Secrets Manager 연계 권장 |
 
 {{< callout type="warning" >}}
-AWS Access Key/Secret Key를 GitHub Secrets에 직접 저장하는 방식은 피하세요. **OIDC(OpenID Connect)** 방식이 훨씬 안전합니다.
+AWS Access Key/Secret Key를 GitHub Secrets에 직접 저장하는 방식은 피하세요. **OIDC**(OpenID Connect) 방식이 훨씬 안전합니다.
 {{< /callout >}}
 
 ## 브랜치 전략과 CI/CD 연계

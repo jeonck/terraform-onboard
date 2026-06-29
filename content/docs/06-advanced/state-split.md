@@ -168,5 +168,5 @@ graph LR
 - plan 시간이 수 초 ~ 수십 초로 단축
 
 {{< callout type="info" >}}
-State를 너무 잘게 쪼개면 오히려 관리 복잡도가 올라갑니다. 처음에는 **환경별(dev/prod) + 계층별(network/platform/app)** 조합으로 시작하고, 팀 규모와 함께 세분화하는 것이 현실적입니다.
+State를 너무 잘게 쪼개면 오히려 관리 복잡도가 올라갑니다. 처음에는 **환경별**(dev/prod) + **계층별**(network/platform/app) 조합으로 시작하고, 팀 규모와 함께 세분화하는 것이 현실적입니다.
 {{< /callout >}}

@@ -167,7 +167,7 @@ terraform apply   # import 실행
 ```
 
 {{< callout type="info" >}}
-**generate 기능 (Terraform 1.5+)**
+**generate 기능** (Terraform 1.5+)
 
 ```bash
 terraform plan -generate-config-out=generated.tf

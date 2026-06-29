@@ -104,7 +104,7 @@ weight: 4
 - [ ] 최근 State 변경 이력 확인 가능
 - [ ] 복구 절차 문서 최신 상태
 
-**Drift 점검 (월 1회 권장)**
+**Drift 점검** (월 1회 권장)
 - [ ] `terraform plan -refresh-only` 실행 결과 확인
 - [ ] 예상치 못한 Drift 없음
 - [ ] 발견된 Drift는 티켓 등록 완료

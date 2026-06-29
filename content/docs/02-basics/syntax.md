@@ -165,7 +165,7 @@ output "subnet_ids" {
 
 ## 코드 비교: count vs for_each
 
-**나쁜 예 (count 사용)**:
+**나쁜 예** (count 사용):
 ```hcl
 resource "aws_iam_user" "team" {
   count = length(var.team_members)
@@ -176,7 +176,7 @@ resource "aws_iam_user" "team" {
 # bob과 carol이 재생성됨!
 ```
 
-**좋은 예 (for_each 사용)**:
+**좋은 예** (for_each 사용):
 ```hcl
 resource "aws_iam_user" "team" {
   for_each = toset(var.team_members)
@@ -212,7 +212,7 @@ resource "aws_cloudwatch_metric_alarm" "cpu" {
 
 반복적으로 나타나는 내부 블록을 동적으로 생성합니다.
 
-**나쁜 예 (하드코딩)**:
+**나쁜 예** (하드코딩):
 ```hcl
 resource "aws_security_group" "web" {
   name = "web-sg"
@@ -240,7 +240,7 @@ resource "aws_security_group" "web" {
 }
 ```
 
-**좋은 예 (dynamic block)**:
+**좋은 예** (dynamic block):
 ```hcl
 variable "ingress_rules" {
   type = list(object({
