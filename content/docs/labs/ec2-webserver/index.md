@@ -137,7 +137,7 @@ output "public_ip" {
 
 ## 실행 절차
 
-{{< steps >}}
+{{% steps %}}
 
 ### 초기화 — terraform init
 
@@ -200,7 +200,7 @@ terraform destroy
 
 `yes`를 입력하면 EC2 인스턴스와 보안 그룹이 모두 삭제됩니다.
 
-{{< /steps >}}
+{{% /steps %}}
 
 ---
 
