@@ -172,6 +172,9 @@ terraform plan -var="instance_name=my-server"
 
 ```bash
 terraform apply
+
+# 확인 없이 자동 승인 (CI/CD 환경)
+terraform apply -auto-approve
 ```
 
 완료 후 출력 예시:
