@@ -21,7 +21,7 @@ weight: 11
 | [Lab 05](env-separation) | **dev/prod 환경 분리** | 30분 | 실무 |
 | [Lab 06](remote-state) | **Remote State 설정** | 30분 | 협업 |
 | [Lab 07](import) | **기존 리소스 Import** | 30분 | 협업 |
-| [Lab 08](#lab-08) | GitHub Actions 파이프라인 | 60분 | 자동화 |
+| [Lab 08](github-actions) | **GitHub Actions 파이프라인** | 60분 | 자동화 |
 | [Lab 09](#lab-09) | 보안 스캔 통합 | 30분 | 보안 |
 | [Lab 10](#lab-10) | State 복구 시나리오 | 45분 | 운영 |
 
