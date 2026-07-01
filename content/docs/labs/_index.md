@@ -16,7 +16,7 @@ weight: 11
 | [QuickLab](ec2-webserver) | **EC2 웹서버 퀵실습** | 15분 | 입문 |
 | [Lab 01](s3-bucket) | **S3 버킷 첫 번째 실습** | 15분 | 입문 |
 | [Lab 02](vpc-ec2) | **VPC + EC2 기본 스택** | 30분 | 기초 |
-| [Lab 03](#lab-03) | 변수와 Outputs 실습 | 20분 | 기초 |
+| [Lab 03](variables-outputs) | **변수와 Outputs 실습** | 20분 | 기초 |
 | [Lab 04](#lab-04) | 모듈 만들기 | 45분 | 실무 |
 | [Lab 05](#lab-05) | dev/prod 환경 분리 | 30분 | 실무 |
 | [Lab 06](#lab-06) | Remote State 설정 | 30분 | 협업 |
