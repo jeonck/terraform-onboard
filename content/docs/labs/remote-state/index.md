@@ -407,4 +407,18 @@ myapp/prod/network/terraform.tfstate
 
 **State Key = 경계**: 같은 S3 버킷이더라도 `key`가 다르면 완전히 독립된 State입니다. 하나의 버킷으로 여러 프로젝트·환경의 State를 관리할 수 있습니다.
 
+---
+
+## 실무에서의 교훈
+
+이 실습은 "테라폼에서 리소스의 이름(인자)이 바뀌면 어떻게 동작하는가"를 보여주는 아주 좋은 예시입니다.
+
+{{< callout type="warning" >}}
+**리소스 교체(Replace)**: S3 버킷처럼 이름이 곧 리소스 식별자가 되는 경우, 이름을 바꾸면 수정이 아니라 '삭제 후 재생성'이 일어납니다. `main-app/main.tf`의 `aws_s3_bucket.app`이 바로 그 예시입니다 — `bucket` 인자 값이 바뀔 때마다 `terraform plan`에는 `-/+ destroy and re-create`가 표시됩니다. 실무 운영 DB나 서버에서 이런 일이 벌어지면 대형 사고겠죠? 그래서 실무에서는 리소스 이름을 함부로 바꾸지 않습니다.
+{{< /callout >}}
+
+{{< callout type="warning" >}}
+**`timestamp()`의 위험성**: 실제 운영 환경에서는 절대 `timestamp()` 같은 함수를 버킷 이름에 사용하지 않습니다. `apply`를 실행할 때마다 값이 바뀌어 매번 새 이름이 계산되고, 그 결과 `terraform plan`이 매번 리소스 교체를 제안합니다. 이름이 매번 바뀌면 인프라를 예측할 수 없기 때문이죠. 이 실습에서는 학습 목적으로만 사용했으며, 실제 프로젝트에서는 `random_string`/`random_id`(bootstrap에서 사용한 방식처럼 한 번만 생성되고 고정됨)나 고정된 명명 규칙을 사용해야 합니다.
+{{< /callout >}}
+
 → 다음 실습: [Lab 07 기존 리소스 Import](#) — 콘솔에서 수동 생성한 리소스를 Terraform으로 편입

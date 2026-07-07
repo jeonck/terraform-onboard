@@ -24,6 +24,34 @@ weight: 11
 | [Lab 08](github-actions) | **GitHub Actions 파이프라인** | 60분 | 자동화 |
 | [Lab 09](security-scan) | **보안 스캔 통합** | 30분 | 보안 |
 | [Lab 10](state-recovery) | **State 복구 시나리오** | 45분 | 운영 |
+| [Lab 11](module-versioning) | **모듈 버전 관리와 레지스트리** | 40분 | 실무 심화 |
+| [Lab 12](policy-as-code) | **Policy as Code** | 40분 | 거버넌스 |
+| [Lab 13](multi-region) | **멀티 리전 배포** | 45분 | 아키텍처 |
+| [Lab 14](iam-least-privilege) | **IAM 최소권한과 컴플라이언스 태깅** | 40분 | 보안 |
+| [Lab 15](monitoring-as-code) | **모니터링 as Code** | 40분 | 운영 |
+| [Lab 16](terraform-test) | **Terraform 네이티브 테스트** | 40분 | 품질 |
+| [Lab 17](drift-detection) | **드리프트 탐지 자동화** | 40분 | 운영 |
+| [Lab 18](ecs-container) | **ECS 컨테이너 서비스 배포** | 45분 | 컨테이너 |
+
+---
+
+## 실무 JD 기반 역량 매핑 {#jd-mapping}
+
+Lab 11~18은 LinkedIn의 실제 Terraform 채용공고(Terraform Infrastructure Engineer, Senior Terraform Engineer, Cloud Terraform Engineer, DevSecOps Specialist, SRE 등 11건)를 분석해, 현업에서 반복적으로 요구되는 역량을 실습으로 옮긴 것입니다. 각 랩의 "이 랩이 입증하는 실무 역량" 섹션에서 원문 JD 인용을 확인할 수 있습니다.
+
+| 채용공고 요구 역량 | 원문 표현 (JD 인용) | 대응 Lab |
+|---|---|---|
+| 재사용 모듈 설계·거버넌스 | "build and maintain reusable Terraform modules" | [Lab 04](modules), [Lab 11](module-versioning) |
+| 모듈 레지스트리 운영 | "Private Module Registry" | [Lab 11](module-versioning) |
+| 정책 기반 배포 통제 | "Terraform Sentinel" | [Lab 12](policy-as-code) |
+| 멀티 리전·고가용성 설계 | "multi-region, or active-active cloud infrastructure patterns" | [Lab 13](multi-region) |
+| 규제 환경 보안 (IAM·태깅) | "IAM... in HIPAA-regulated production" | [Lab 14](iam-least-privilege) |
+| 모니터링·자가 복구 구성 | "self-scaling and self-healing configurations" | [Lab 15](monitoring-as-code) |
+| 테스트 주도 인프라 개발 | "Test-Driven Development (TDD)" | [Lab 16](terraform-test) |
+| 안전한 운영 자동화 | "safe, scalable cloud automation" | [Lab 10](state-recovery), [Lab 17](drift-detection) |
+| 컨테이너 오케스트레이션 | "VPC, EC2, ECS, EKS, IAM, S3, and SQS" | [Lab 18](ecs-container) |
+| CI/CD 파이프라인 통합 | "Integrate Terraform into CI/CD pipelines" | [Lab 08](github-actions), [Lab 09](security-scan) |
+| State 운영·복구 | "support production infrastructure changes" | [Lab 06](remote-state), [Lab 10](state-recovery) |
 
 ---
 
