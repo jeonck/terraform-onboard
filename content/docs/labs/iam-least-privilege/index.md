@@ -64,14 +64,14 @@ flowchart TD
 
 ---
 
-## 파일 구조
+## 실습 파일 구성
 
 ```
 lab14-iam-least-privilege/
 ├── versions.tf
-├── providers.tf
-├── main.tf
-├── iam.tf
+├── providers.tf   ← default_tags 블록 포함
+├── main.tf        ← aws_caller_identity, random_string.suffix, aws_s3_bucket.data
+├── iam.tf         ← 최소권한 IAM 정책/역할
 └── outputs.tf
 ```
 
@@ -89,6 +89,10 @@ terraform {
     aws = {
       source  = "hashicorp/aws"
       version = "~> 5.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
     }
   }
 }
@@ -111,14 +115,22 @@ provider "aws" {
 }
 ```
 
-### main.tf — 계정 확인 + 실습용 S3 버킷
+### main.tf — 계정 확인 + 랜덤 접미사 + 실습용 S3 버킷
 
 ```hcl
 # 현재 자격 증명이 가리키는 계정 확인 (잘못된 계정 배포 방지)
 data "aws_caller_identity" "current" {}
 
+# 버킷 이름 중복 방지를 위한 무작위 접미사
+resource "random_string" "suffix" {
+  length  = 8
+  special = false
+  upper   = false
+}
+
+# 실습용 S3 버킷 (IAM role이 읽기 권한을 갖는 대상)
 resource "aws_s3_bucket" "data" {
-  bucket = "lab14-least-privilege-data-${data.aws_caller_identity.current.account_id}"
+  bucket = "lab14-least-privilege-data-${random_string.suffix.result}"
 
   # default_tags 외에 리소스 고유 태그만 추가
   tags = {
@@ -126,6 +138,10 @@ resource "aws_s3_bucket" "data" {
   }
 }
 ```
+
+{{< callout type="info" >}}
+버킷 이름에 AWS 계정 ID 대신 `random_string.suffix`를 쓰는 이유: 계정 ID를 리소스 이름에 그대로 노출하면 로그·URL·Terraform state 어디서나 계정 식별 정보가 새어나갑니다. `aws_caller_identity`는 계정 ID 노출용이 아니라 "지금 어느 계정에 배포하는지" 확인하는 안전장치로만 쓰고, 전역 유일성이 필요한 이름에는 `random_string`을 사용합니다.
+{{< /callout >}}
 
 ### iam.tf — 최소권한 Role과 Policy
 
@@ -271,12 +287,12 @@ aws iam get-role-policy \
     {
         "Sid": "ListBucket",
         "Action": "s3:ListBucket",
-        "Resource": "arn:aws:s3:::lab14-least-privilege-data-123456789012"
+        "Resource": "arn:aws:s3:::lab14-least-privilege-data-a1b2c3d4"
     },
     {
         "Sid": "ReadObjects",
         "Action": "s3:GetObject",
-        "Resource": "arn:aws:s3:::lab14-least-privilege-data-123456789012/*"
+        "Resource": "arn:aws:s3:::lab14-least-privilege-data-a1b2c3d4/*"
     }
 ]
 ```

@@ -65,22 +65,27 @@ flowchart LR
 
 ---
 
-## 파일 구조
+## 실습 파일 구성
 
 ```
 lab13-multi-region/
 ├── versions.tf
-├── providers.tf
-├── main.tf
-├── iam.tf
-├── replication.tf
+├── providers.tf                          ← 기본(ap-northeast-2) + alias "us"(us-east-1)
+├── main.tf                               ← random_string.suffix + module "seoul"/"virginia" 호출
+├── iam.tf                                ← 복제용 IAM 역할/정책
+├── replication.tf                        ← aws_s3_bucket_replication_configuration
 ├── outputs.tf
-└── modules/
-    └── regional-bucket/
-        ├── main.tf
-        ├── variables.tf
-        └── outputs.tf
+└── modules/regional-bucket/
+    ├── main.tf
+    ├── variables.tf
+    └── outputs.tf
 ```
+
+{{< callout type="info" >}}
+`main.tf`는 S3 버킷 이름 접미사에 `data.aws_caller_identity.current.account_id`가 아니라 `random_string.suffix` 리소스를 사용합니다. 계정 ID는 노출 시 계정을 특정할 수 있는 정보라, 이 저장소의 모든 랩은 버킷 이름 유일성 확보에 `random_string`을 쓰는 것으로 통일했습니다. 이 때문에 `versions.tf`에도 `random` 프로바이더가 추가로 필요합니다.
+{{< /callout >}}
+
+`modules/regional-bucket/`은 리전 정보를 전혀 갖지 않는 **재사용 모듈**입니다. `bucket_name`, `environment` 두 변수로만 파라미터화되어 있고, 어느 리전에 생성될지는 호출부가 주입하는 provider가 결정합니다. `module "seoul"`은 `providers` 블록 없이 기본(alias 없는) provider를 그대로 물려받고, `module "virginia"`만 `providers = { aws = aws.us }`로 alias provider를 명시적으로 주입합니다.
 
 ---
 
@@ -97,6 +102,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
   }
 }
 ```
@@ -104,12 +113,12 @@ terraform {
 ### providers.tf
 
 ```hcl
-# 기본 provider — 서울 리전
+# 기본 provider — 서울 리전 (Active)
 provider "aws" {
   region = "ap-northeast-2"
 }
 
-# alias provider — 버지니아 리전
+# alias provider — 버지니아 리전 (Standby)
 provider "aws" {
   alias  = "us"
   region = "us-east-1"
@@ -119,25 +128,26 @@ provider "aws" {
 ### main.tf
 
 ```hcl
-data "aws_caller_identity" "current" {}
-
-locals {
-  suffix = data.aws_caller_identity.current.account_id
+# 버킷 이름 중복 방지를 위한 무작위 접미사
+resource "random_string" "suffix" {
+  length  = 8
+  special = false
+  upper   = false
 }
 
-# 서울 리전 — 기본 provider 사용
+# 서울 리전 — 기본 provider 사용 (Active)
 module "seoul" {
   source = "./modules/regional-bucket"
 
-  bucket_name = "lab13-crr-seoul-${local.suffix}"
+  bucket_name = "lab13-crr-seoul-${random_string.suffix.result}"
   environment = "active"
 }
 
-# 버지니아 리전 — alias provider를 모듈에 주입
+# 버지니아 리전 — alias provider를 모듈에 주입 (Standby)
 module "virginia" {
   source = "./modules/regional-bucket"
 
-  bucket_name = "lab13-crr-virginia-${local.suffix}"
+  bucket_name = "lab13-crr-virginia-${random_string.suffix.result}"
   environment = "standby"
 
   providers = {
@@ -361,12 +371,12 @@ aws s3api head-object --bucket "$SEOUL" --key hello.txt \
 ## 예상 결과 / 검증
 
 ```
-Apply complete! Resources: 7 added, 0 changed, 0 destroyed.
+Apply complete! Resources: 8 added, 0 changed, 0 destroyed.
 
 Outputs:
 
-seoul_bucket    = "lab13-crr-seoul-123456789012"
-virginia_bucket = "lab13-crr-virginia-123456789012"
+seoul_bucket    = "lab13-crr-seoul-a1b2c3d4"
+virginia_bucket = "lab13-crr-virginia-a1b2c3d4"
 ```
 
 검증 체크리스트:

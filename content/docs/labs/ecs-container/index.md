@@ -81,16 +81,18 @@ JD들이 요구하는 것은 특정 도구가 아니라 **컨테이너 오케스
 
 ---
 
-## 파일 구조
+## 실습 파일 구성
 
 ```
 lab18-ecs-container/
 ├── versions.tf
 ├── providers.tf
-├── network.tf       # 기본 VPC/서브넷 조회 + 보안그룹
-├── iam.tf           # 태스크 실행 Role
-├── logs.tf          # 컨테이너 로그 그룹
-├── ecs.tf           # 클러스터 + 태스크 정의 + 서비스
+├── variables.tf     ← project/environment (기본값 lab18/dev)
+├── locals.tf        ← name_prefix + common_tags
+├── network.tf       ← 기본 VPC/서브넷 data source + 보안 그룹(80 인바운드)
+├── iam.tf           ← ECS 태스크 실행 역할 + AmazonECSTaskExecutionRolePolicy
+├── logs.tf          ← CloudWatch 로그 그룹 (3일 보존)
+├── ecs.tf           ← ECS 클러스터, Fargate 태스크 정의, 서비스
 └── outputs.tf
 ```
 
@@ -121,6 +123,37 @@ provider "aws" {
 }
 ```
 
+### variables.tf
+
+```hcl
+variable "project" {
+  description = "프로젝트 이름"
+  type        = string
+  default     = "lab18"
+}
+
+variable "environment" {
+  description = "배포 환경"
+  type        = string
+  default     = "dev"
+}
+```
+
+### locals.tf
+
+```hcl
+locals {
+  # 리소스 이름 접두사 — 클러스터/태스크/서비스 이름을 doc과 동일하게 유지
+  name_prefix = var.project
+
+  common_tags = {
+    Project     = var.project
+    Environment = var.environment
+    ManagedBy   = "terraform"
+  }
+}
+```
+
 ### network.tf
 
 ```hcl
@@ -141,8 +174,9 @@ data "aws_subnets" "default" {
   }
 }
 
+# Fargate 태스크용 보안 그룹 — HTTP 인바운드만 허용
 resource "aws_security_group" "nginx" {
-  name        = "lab18-nginx-sg"
+  name        = "${local.name_prefix}-nginx-sg"
   description = "Allow HTTP inbound for nginx task"
   vpc_id      = data.aws_vpc.default.id
 
@@ -162,9 +196,9 @@ resource "aws_security_group" "nginx" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = {
-    Name = "lab18-nginx-sg"
-  }
+  tags = merge(local.common_tags, {
+    Name = "${local.name_prefix}-nginx-sg"
+  })
 }
 ```
 
@@ -172,8 +206,9 @@ resource "aws_security_group" "nginx" {
 
 ```hcl
 # 태스크 "실행" Role — ECS 에이전트가 이미지 pull, 로그 전송에 사용
+# (컨테이너 내부에서 AWS API를 호출하려면 별도의 task_role이 필요)
 resource "aws_iam_role" "task_execution" {
-  name = "lab18-ecs-task-execution-role"
+  name = "${local.name_prefix}-ecs-task-execution-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -185,8 +220,13 @@ resource "aws_iam_role" "task_execution" {
       Action = "sts:AssumeRole"
     }]
   })
+
+  tags = merge(local.common_tags, {
+    Name = "${local.name_prefix}-ecs-task-execution-role"
+  })
 }
 
+# AWS 관리형 정책 연결 — ECR pull, CloudWatch Logs 전송 권한 포함
 resource "aws_iam_role_policy_attachment" "task_execution" {
   role       = aws_iam_role.task_execution.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
@@ -196,21 +236,32 @@ resource "aws_iam_role_policy_attachment" "task_execution" {
 ### logs.tf
 
 ```hcl
+# 컨테이너 stdout/stderr 로그 수집 대상
 resource "aws_cloudwatch_log_group" "nginx" {
-  name              = "/ecs/lab18-nginx"
+  name              = "/ecs/${local.name_prefix}-nginx"
   retention_in_days = 3 # 실습용 — 짧게 보관해 비용 최소화
+
+  tags = merge(local.common_tags, {
+    Name = "${local.name_prefix}-nginx-logs"
+  })
 }
 ```
 
 ### ecs.tf
 
 ```hcl
+# 논리적 컨테이너 그룹 — 실제 컴퓨팅은 Fargate가 관리
 resource "aws_ecs_cluster" "main" {
-  name = "lab18-cluster"
+  name = "${local.name_prefix}-cluster"
+
+  tags = merge(local.common_tags, {
+    Name = "${local.name_prefix}-cluster"
+  })
 }
 
+# 태스크 정의 — nginx 컨테이너 스펙 (≈ Kubernetes Pod 스펙)
 resource "aws_ecs_task_definition" "nginx" {
-  family                   = "lab18-nginx"
+  family                   = "${local.name_prefix}-nginx"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc" # Fargate 필수 — 태스크마다 ENI 할당
   cpu                      = 256      # 0.25 vCPU
@@ -241,10 +292,15 @@ resource "aws_ecs_task_definition" "nginx" {
       }
     }
   ])
+
+  tags = merge(local.common_tags, {
+    Name = "${local.name_prefix}-nginx-taskdef"
+  })
 }
 
+# 서비스 — 태스크 수를 desired_count로 유지 (≈ Kubernetes Deployment)
 resource "aws_ecs_service" "nginx" {
-  name            = "lab18-nginx-svc"
+  name            = "${local.name_prefix}-nginx-svc"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.nginx.arn
   launch_type     = "FARGATE"
@@ -255,6 +311,10 @@ resource "aws_ecs_service" "nginx" {
     security_groups  = [aws_security_group.nginx.id]
     assign_public_ip = true # 퍼블릭 서브넷 + NAT 없이 이미지 pull
   }
+
+  tags = merge(local.common_tags, {
+    Name = "${local.name_prefix}-nginx-svc"
+  })
 }
 ```
 
@@ -262,15 +322,18 @@ resource "aws_ecs_service" "nginx" {
 
 ```hcl
 output "cluster_name" {
-  value = aws_ecs_cluster.main.name
+  description = "ECS 클러스터 이름"
+  value       = aws_ecs_cluster.main.name
 }
 
 output "service_name" {
-  value = aws_ecs_service.nginx.name
+  description = "ECS 서비스 이름"
+  value       = aws_ecs_service.nginx.name
 }
 
 output "log_group" {
-  value = aws_cloudwatch_log_group.nginx.name
+  description = "컨테이너 로그가 쌓이는 CloudWatch 로그 그룹"
+  value       = aws_cloudwatch_log_group.nginx.name
 }
 ```
 
@@ -341,7 +404,7 @@ aws logs tail /ecs/lab18-nginx --since 10m
 ## 예상 결과 / 검증
 
 ```
-Apply complete! Resources: 8 added, 0 changed, 0 destroyed.
+Apply complete! Resources: 7 added, 0 changed, 0 destroyed.
 
 Outputs:
 

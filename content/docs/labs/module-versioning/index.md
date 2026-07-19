@@ -64,23 +64,41 @@ flowchart TD
 
 ---
 
-## 파일 구조
+## 실습 파일 구성
 
 모듈 저장소와 소비자 코드는 **별도의 Git 저장소**입니다. 이 랩에서는 로컬에 두 디렉터리로 만들되, 모듈 쪽만 Git 저장소로 초기화하고 태그를 붙입니다.
 
 ```
 lab11-module-versioning/
-├── s3-module/               # 모듈 저장소 (독립된 Git 저장소)
+├── s3-module/              ← 버전 태그를 붙일 모듈 저장소 (v1.0.0 → v1.1.0 → v2.0.0)
 │   ├── versions.tf
 │   ├── variables.tf
 │   ├── main.tf
 │   └── outputs.tf
-└── consumer/                # 모듈 소비자 (실제 인프라 코드)
+└── consumer/                ← 모듈을 소비하는 루트 모듈
     ├── versions.tf
     ├── providers.tf
     ├── main.tf
     └── outputs.tf
 ```
+
+{{< callout type="warning" >}}
+**이 랩을 실제로 실행하려면 `s3-module`을 먼저 로컬 Git 저장소로 만들어야 합니다**: `consumer/main.tf`는 원격 Git 호스트나 Registry가 아니라 로컬 절대경로를 가리키는 `git::file:///.../s3-module?ref=v1.0.0` 소스를 사용합니다. 아래 명령을 **먼저** 실행해 두어야 `consumer`의 `terraform init`이 성공합니다.
+
+```bash
+cd s3-module
+git init
+git add -A
+git commit -m "v1.0.0"
+git tag v1.0.0
+```
+
+이후 랩 진행에 따라 모듈을 v1.1.0, v2.0.0으로 진화시킬 때도 동일하게 커밋 후 태그를 붙여야 합니다(아래 "실행 단계" 참고). 또한 예제의 절대경로는 이 저장소가 클론된 실제 위치에 맞게 반드시 수정해야 합니다.
+{{< /callout >}}
+
+{{< callout type="info" >}}
+`consumer/main.tf`는 `random_string.suffix` 리소스를 두고 `app_bucket`, `registry_bucket` 두 모듈의 버킷 이름 뒤에 붙입니다. S3 버킷 이름은 전 세계에서 유일해야 하므로 리터럴 이름을 그대로 쓰면 `BucketAlreadyExists` 오류가 발생합니다. 이 때문에 `consumer/versions.tf`에도 `random` 프로바이더가 추가로 필요합니다.
+{{< /callout >}}
 
 ---
 
@@ -104,6 +122,7 @@ terraform {
 ### s3-module/variables.tf
 
 ```hcl
+# v1.0.0 인터페이스: 버킷 이름 (v2.0.0에서 name으로 개명 예정 — Breaking Change)
 variable "bucket_name" {
   description = "생성할 S3 버킷 이름"
   type        = string
@@ -119,6 +138,7 @@ variable "tags" {
 ### s3-module/main.tf
 
 ```hcl
+# S3 버킷 생성 (모듈 v1.0.0)
 resource "aws_s3_bucket" "this" {
   bucket = var.bucket_name
 
@@ -126,7 +146,22 @@ resource "aws_s3_bucket" "this" {
     ManagedBy = "terraform"
   })
 }
+
+# v1.1.0에서 추가할 선택적 버저닝 리소스 예시 (하위 호환 Minor 업그레이드)
+# variable "enable_versioning" { type = bool, default = false } 를 variables.tf에 추가한 뒤 아래 블록을 활성화합니다.
+# resource "aws_s3_bucket_versioning" "this" {
+#   count  = var.enable_versioning ? 1 : 0
+#   bucket = aws_s3_bucket.this.id
+#
+#   versioning_configuration {
+#     status = "Enabled"
+#   }
+# }
 ```
+
+{{< callout type="info" >}}
+`s3-module`은 버전별로 별도 디렉터리를 두지 않습니다. **하나의 모듈 디렉터리를 그대로 두고 Git 태그로만 버전을 구분**합니다. v1.1.0에서 추가할 리소스는 위처럼 미리 주석으로 안내만 해 두고, 실제 코드 변경은 실행 단계에서 주석을 해제하고 커밋·태그하는 방식으로 진행합니다.
+{{< /callout >}}
 
 ### s3-module/outputs.tf
 
@@ -157,6 +192,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
   }
 }
 ```
@@ -172,21 +211,45 @@ provider "aws" {
 ### consumer/main.tf
 
 ```hcl
-# Git 태그로 버전을 고정한 모듈 호출
+# 버킷 이름 중복 방지를 위한 무작위 접미사
+resource "random_string" "suffix" {
+  length  = 8
+  special = false
+  upper   = false
+}
+
+# Git 태그(v1.0.0)로 버전을 고정한 모듈 호출
 # 실습에서는 로컬 Git 저장소(file://)를 사용하고,
 # 실무에서는 GitHub 등 원격 저장소 URL을 사용합니다.
+# ref를 v1.1.0 -> v2.0.0으로 올릴 때는 반드시 `terraform init -upgrade`가 필요합니다.
 module "app_bucket" {
   source = "git::file:///절대경로/lab11-module-versioning/s3-module?ref=v1.0.0"
   # 실무 예시:
   # source = "git::https://github.com/my-org/terraform-aws-s3-module.git?ref=v1.0.0"
 
-  bucket_name = "lab11-module-versioning-app"
+  bucket_name = "lab11-module-versioning-app-${random_string.suffix.result}"
 
   tags = {
     Name = "lab11-app"
   }
 }
+
+# Terraform Registry 공개 모듈 사용 예시 (보너스) — 버전 제약 연산자로 4.x 최신만 허용, 5.0은 차단
+module "registry_bucket" {
+  source  = "terraform-aws-modules/s3-bucket/aws"
+  version = "~> 4.0"
+
+  bucket = "lab11-registry-example-${random_string.suffix.result}"
+
+  tags = {
+    Name = "lab11-registry"
+  }
+}
 ```
+
+{{< callout type="info" >}}
+Git 소스 모듈(`app_bucket`)과 Registry 소스 모듈(`registry_bucket`)을 같은 파일에 나란히 둘 수 있습니다. Registry 모듈에 대한 자세한 설명은 아래 "Terraform Registry 공개 모듈 사용" 절을 참고하세요.
+{{< /callout >}}
 
 ### consumer/outputs.tf
 
@@ -197,6 +260,14 @@ output "bucket_id" {
 
 output "bucket_arn" {
   value = module.app_bucket.bucket_arn
+}
+
+output "registry_bucket_id" {
+  value = module.registry_bucket.s3_bucket_id
+}
+
+output "registry_bucket_arn" {
+  value = module.registry_bucket.s3_bucket_arn
 }
 ```
 
@@ -257,7 +328,7 @@ variable "enable_versioning" {
 }
 ```
 
-`s3-module/main.tf`에 추가:
+`s3-module/main.tf`에는 이미 아래 리소스가 **주석으로 준비**되어 있습니다. 주석을 해제해 활성화합니다(모듈 코드는 버전마다 새 디렉터리를 만들지 않고, **같은 디렉터리를 그대로 진화**시킵니다):
 
 ```hcl
 resource "aws_s3_bucket_versioning" "this" {
@@ -284,7 +355,7 @@ git tag v1.1.0
 ```hcl
   source = "git::file:///절대경로/lab11-module-versioning/s3-module?ref=v1.1.0"
 
-  bucket_name       = "lab11-module-versioning-app"
+  bucket_name       = "lab11-module-versioning-app-${random_string.suffix.result}"
   enable_versioning = true   # v1.1.0의 새 기능 사용
 ```
 
@@ -335,7 +406,7 @@ terraform plan
 Error: Unsupported argument
 
   on main.tf line 8, in module "app_bucket":
-   8:   bucket_name = "lab11-module-versioning-app"
+   8:   bucket_name = "lab11-module-versioning-app-${random_string.suffix.result}"
 
 An argument named "bucket_name" is not expected here.
 ```
@@ -346,7 +417,7 @@ Breaking change가 소비자를 어떻게 깨뜨리는지 확인했습니다. �
 module "app_bucket" {
   source = "git::file:///절대경로/lab11-module-versioning/s3-module?ref=v2.0.0"
 
-  name              = "lab11-module-versioning-app"   # bucket_name → name
+  name              = "lab11-module-versioning-app-${random_string.suffix.result}"   # bucket_name → name
   enable_versioning = true
 
   tags = {
@@ -381,7 +452,9 @@ cat .terraform/modules/modules.json | python3 -m json.tool
 # "Source": "git::file:///...?ref=v2.0.0"  ← ref가 그대로 기록됨 ✅
 
 # 3. 버저닝이 실제로 켜졌는지 확인 (v1.1.0 기능)
-aws s3api get-bucket-versioning --bucket lab11-module-versioning-app
+# 버킷 이름은 random_string.suffix가 붙으므로 terraform output으로 실제 이름을 먼저 확인합니다
+terraform output bucket_id
+aws s3api get-bucket-versioning --bucket "$(terraform output -raw bucket_id)"
 # { "Status": "Enabled" } ✅
 
 # 4. plan이 깨끗한지 최종 확인
@@ -395,14 +468,14 @@ terraform plan
 
 ## Terraform Registry 공개 모듈 사용 (보너스)
 
-직접 만들지 않아도 되는 범용 모듈은 [Terraform Registry](https://registry.terraform.io)의 검증된 모듈을 사용합니다. Registry 모듈은 `version` 인자로 **버전 제약 연산자**를 지원합니다.
+직접 만들지 않아도 되는 범용 모듈은 [Terraform Registry](https://registry.terraform.io)의 검증된 모듈을 사용합니다. Registry 모듈은 `version` 인자로 **버전 제약 연산자**를 지원합니다. 이 랩의 `consumer/main.tf`에는 위에서 이미 본 것처럼 `registry_bucket` 모듈이 `app_bucket`(Git 소스)과 나란히 정의되어 있습니다.
 
 ```hcl
 module "registry_bucket" {
   source  = "terraform-aws-modules/s3-bucket/aws"
   version = "~> 4.0"   # 4.x의 최신 버전 사용, 5.0은 차단
 
-  bucket = "lab11-registry-example"
+  bucket = "lab11-registry-example-${random_string.suffix.result}"
 
   tags = {
     Name = "lab11-registry"
@@ -430,7 +503,7 @@ cd lab11-module-versioning/consumer
 terraform destroy -auto-approve
 ```
 
-Registry 보너스 모듈까지 배포했다면 함께 삭제되는지 `destroy` 출력에서 확인하세요.
+`app_bucket`(Git 소스)뿐 아니라 `registry_bucket`(Registry 소스) 모듈도 함께 삭제되는지 `destroy` 출력에서 확인하세요.
 
 ---
 

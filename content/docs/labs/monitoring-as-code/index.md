@@ -78,17 +78,17 @@ flowchart LR
 
 ---
 
-## 파일 구조
+## 실습 파일 구성
 
 ```
 lab15-monitoring-as-code/
 ├── versions.tf
 ├── providers.tf
-├── variables.tf
-├── main.tf          # 감시 대상 EC2
-├── sns.tf           # 알림 채널
-├── alarms.tf        # 알람 2종 (CPU + self-healing)
-├── dashboard.tf     # 대시보드
+├── variables.tf   ← alert_email, cpu_threshold(기본 70)
+├── main.tf        ← 감시 대상 EC2 인스턴스 (data.aws_ami.al2023 + aws_instance.target)
+├── sns.tf         ← aws_sns_topic + aws_sns_topic_subscription
+├── alarms.tf      ← CPU 알람(SNS 통지) + EC2 auto-recover 알람
+├── dashboard.tf   ← aws_cloudwatch_dashboard (jsonencode 3-위젯)
 └── outputs.tf
 ```
 
@@ -115,7 +115,7 @@ terraform {
 
 ```hcl
 provider "aws" {
-  region = "ap-northeast-2"
+  region = "ap-northeast-2" # 서울 리전
 }
 ```
 
@@ -137,7 +137,7 @@ variable "cpu_threshold" {
 ### main.tf
 
 ```hcl
-# 감시 대상 — 프리 티어 EC2
+# 최신 Amazon Linux 2023 AMI 조회 (data source)
 data "aws_ami" "al2023" {
   most_recent = true
   owners      = ["amazon"]
@@ -148,6 +148,7 @@ data "aws_ami" "al2023" {
   }
 }
 
+# 감시 대상 — 프리 티어 EC2
 resource "aws_instance" "target" {
   ami           = data.aws_ami.al2023.id
   instance_type = "t2.micro"
@@ -161,6 +162,7 @@ resource "aws_instance" "target" {
 ### sns.tf
 
 ```hcl
+# 알림 채널 — 알람 상태 전환을 전달할 SNS 토픽
 resource "aws_sns_topic" "alerts" {
   name = "lab15-infra-alerts"
 }
@@ -222,10 +224,10 @@ resource "aws_cloudwatch_metric_alarm" "auto_recover" {
 ### dashboard.tf
 
 ```hcl
+# 대시보드 레이아웃도 코드 — jsonencode로 HCL을 JSON으로 변환
 resource "aws_cloudwatch_dashboard" "main" {
   dashboard_name = "lab15-infra-overview"
 
-  # 대시보드 레이아웃도 코드 — jsonencode로 HCL을 JSON으로 변환
   dashboard_body = jsonencode({
     widgets = [
       {
@@ -284,15 +286,18 @@ resource "aws_cloudwatch_dashboard" "main" {
 
 ```hcl
 output "instance_id" {
-  value = aws_instance.target.id
+  description = "감시 대상 EC2 인스턴스 ID"
+  value       = aws_instance.target.id
 }
 
 output "sns_topic_arn" {
-  value = aws_sns_topic.alerts.arn
+  description = "알림 SNS 토픽 ARN"
+  value       = aws_sns_topic.alerts.arn
 }
 
 output "dashboard_url" {
-  value = "https://ap-northeast-2.console.aws.amazon.com/cloudwatch/home?region=ap-northeast-2#dashboards/dashboard/${aws_cloudwatch_dashboard.main.dashboard_name}"
+  description = "CloudWatch 대시보드 콘솔 URL"
+  value       = "https://ap-northeast-2.console.aws.amazon.com/cloudwatch/home?region=ap-northeast-2#dashboards/dashboard/${aws_cloudwatch_dashboard.main.dashboard_name}"
 }
 ```
 

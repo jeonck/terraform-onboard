@@ -57,6 +57,9 @@ flowchart LR
 
 ```
 lab09-security-scan/
+├── .github/
+│   └── workflows/
+│       └── security-scan.yml   ← CI 파이프라인 (tfsec + checkov)
 ├── insecure/           ← 취약점 있는 코드 (Before)
 │   ├── versions.tf
 │   ├── providers.tf
@@ -67,6 +70,10 @@ lab09-security-scan/
     └── main.tf
 ```
 
+{{< callout type="info" >}}
+`insecure/main.tf`와 `secure/main.tf` 모두 `random_string.suffix` 리소스를 두고 S3 버킷 이름에 붙입니다. S3 버킷 이름은 전 세계에서 유일해야 하므로, 리터럴 이름(`lab09-insecure-bucket` 등)을 그대로 쓰면 다른 사용자의 버킷과 충돌해 `BucketAlreadyExists` 오류가 발생합니다. 이 때문에 `versions.tf`에도 `random` 프로바이더가 추가로 필요합니다.
+{{< /callout >}}
+
 ---
 
 ## Before: 취약점 있는 코드
@@ -76,10 +83,15 @@ lab09-security-scan/
 ```hcl
 terraform {
   required_version = ">= 1.0.0"
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
       version = "~> 5.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
     }
   }
 }
@@ -96,9 +108,16 @@ provider "aws" {
 ### insecure/main.tf
 
 ```hcl
+# 버킷 이름 중복 방지를 위한 무작위 접미사
+resource "random_string" "suffix" {
+  length  = 8
+  special = false
+  upper   = false
+}
+
 # ❌ 취약점 1: 퍼블릭 액세스 차단 없음
 resource "aws_s3_bucket" "bad" {
-  bucket = "lab09-insecure-bucket"
+  bucket = "lab09-insecure-bucket-${random_string.suffix.result}"
 }
 
 # ❌ 취약점 2: 암호화 없음 (버킷 수준 암호화 미설정)
@@ -113,7 +132,7 @@ resource "aws_s3_bucket_versioning" "bad" {
 
 # ❌ 취약점 4: 보안 그룹 — SSH를 전체 인터넷에 개방
 resource "aws_security_group" "bad" {
-  name = "lab09-insecure-sg"
+  name = "lab09-insecure-sg-${random_string.suffix.result}"
 
   ingress {
     from_port   = 22
@@ -224,9 +243,16 @@ Passed checks: 2, Failed checks: 8, Skipped checks: 0
 ### secure/main.tf
 
 ```hcl
+# 버킷 이름 중복 방지를 위한 무작위 접미사
+resource "random_string" "suffix" {
+  length  = 8
+  special = false
+  upper   = false
+}
+
 # ✅ S3 버킷 기본 생성
 resource "aws_s3_bucket" "good" {
-  bucket = "lab09-secure-bucket"
+  bucket = "lab09-secure-bucket-${random_string.suffix.result}"
 }
 
 # ✅ 취약점 1 수정: 퍼블릭 액세스 전면 차단
@@ -267,7 +293,7 @@ resource "aws_s3_bucket_logging" "good" {
 
 # ✅ 취약점 4 수정: 보안 그룹 — 최소 권한 원칙 적용
 resource "aws_security_group" "good" {
-  name        = "lab09-secure-sg"
+  name        = "lab09-secure-sg-${random_string.suffix.result}"
   description = "Secure security group"
 
   ingress {
@@ -321,7 +347,7 @@ on:
 permissions:
   contents: read
   pull-requests: write
-  security-events: write   # SARIF 업로드용
+  security-events: write # SARIF 업로드용
 
 jobs:
   tfsec:
@@ -335,8 +361,8 @@ jobs:
       - name: tfsec 실행
         uses: aquasecurity/tfsec-action@v1.0.0
         with:
-          soft_fail: false          # 취약점 발견 시 워크플로 실패
-          format: lovely            # 가독성 높은 출력 형식
+          soft_fail: false # 취약점 발견 시 워크플로 실패
+          format: lovely # 가독성 높은 출력 형식
 
       - name: tfsec SARIF 업로드 (GitHub Security 탭 연동)
         uses: aquasecurity/tfsec-sarif-action@v0.1.0

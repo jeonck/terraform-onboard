@@ -70,19 +70,23 @@ flowchart TD
 
 ---
 
-## 파일 구조
+## 실습 파일 구성
 
 ```
 lab16-terraform-test/
-├── versions.tf
+├── versions.tf      ← required_version >= 1.6.0 (terraform test 기능 요구사항)
 ├── providers.tf
-├── variables.tf
-├── main.tf
+├── variables.tf     ← bucket_name/environment에 validation 블록, tags 맵
+├── main.tf          ← random_string.suffix + aws_s3_bucket.this (precondition/postcondition 포함)
 ├── outputs.tf
 └── tests/
-    ├── naming.tftest.hcl     # 버킷 이름 규칙 테스트
-    └── tags.tftest.hcl       # 필수 태그 규칙 테스트
+    ├── naming.tftest.hcl
+    └── tags.tftest.hcl
 ```
+
+{{< callout type="info" >}}
+`main.tf`는 `random_string.suffix` 리소스를 두고 S3 버킷 이름 끝에 붙입니다. S3 버킷 이름은 전 세계에서 유일해야 하므로, `<bucket_name>-<environment>` 같은 고정 문자열만 쓰면 다른 사용자의 버킷과 충돌해 `BucketAlreadyExists` 오류가 발생합니다. 이 때문에 `versions.tf`에도 `random` 프로바이더가 추가로 필요하고, `tests/naming.tftest.hcl`의 이름 검증 테스트도 정확한 문자열이 아닌 접두어(prefix) 비교로 작성합니다.
+{{< /callout >}}
 
 ---
 
@@ -98,6 +102,10 @@ terraform {
     aws = {
       source  = "hashicorp/aws"
       version = "~> 5.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
     }
   }
 }
@@ -145,11 +153,18 @@ variable "tags" {
 
 ### main.tf
 
-`precondition`은 plan 시점에 조건을 검사해 위반 시 배포를 막고, `postcondition`은 리소스 생성(또는 plan) 결과가 약속을 지키는지 보증합니다.
+`precondition`은 plan 시점에 조건을 검사해 위반 시 배포를 막고, `postcondition`은 리소스 생성(또는 plan) 결과가 약속을 지키는지 보증합니다. 버킷 이름 뒤에는 `random_string.suffix`를 붙여 전역적으로 유일한 이름을 만듭니다.
 
 ```hcl
+# 버킷 이름 중복 방지를 위한 무작위 접미사
+resource "random_string" "suffix" {
+  length  = 8
+  special = false
+  upper   = false
+}
+
 resource "aws_s3_bucket" "this" {
-  bucket = "${var.bucket_name}-${var.environment}"
+  bucket = "${var.bucket_name}-${var.environment}-${random_string.suffix.result}"
 
   tags = merge(var.tags, {
     Environment = var.environment
@@ -188,6 +203,10 @@ output "bucket_arn" {
 
 ### tests/naming.tftest.hcl
 
+{{< callout type="info" >}}
+`main.tf`가 버킷 이름 끝에 `random_string.suffix.result`를 붙이므로, 매 테스트 실행마다 접미사가 달라집니다. 그래서 `valid_bucket_name` 테스트는 정확한 문자열(`==`)이 아니라 **접두어 비교(`startswith`)**로 검증합니다 — 고정 문자열과 비교하면 접미사가 바뀔 때마다 테스트가 항상 실패합니다.
+{{< /callout >}}
+
 ```hcl
 # 파일 전역 변수 — 모든 run 블록의 기본 입력
 variables {
@@ -199,13 +218,13 @@ variables {
 }
 
 # ✅ 정상 케이스: 이름 규칙을 지키면 plan이 성공하고
-#    최종 버킷 이름이 <bucket_name>-<environment> 형식이어야 한다
+#    최종 버킷 이름이 <bucket_name>-<environment>-<random suffix> 형식이어야 한다
 run "valid_bucket_name" {
   command = plan
 
   assert {
-    condition     = aws_s3_bucket.this.bucket == "lab16-test-app-dev"
-    error_message = "버킷 이름은 '<bucket_name>-<environment>' 형식이어야 합니다."
+    condition     = startswith(aws_s3_bucket.this.bucket, "lab16-test-app-dev-")
+    error_message = "버킷 이름은 '<bucket_name>-<environment>-' 접두어로 시작해야 합니다."
   }
 }
 

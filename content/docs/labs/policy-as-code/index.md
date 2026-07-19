@@ -58,17 +58,21 @@ JD에서 "Terraform Sentinel" 경험을 요구할 때, 실제로 묻는 것은 *
 
 ---
 
-## 파일 구조
+## 실습 파일 구성
 
 ```
 lab12-policy-as-code/
 ├── versions.tf
 ├── providers.tf
-├── main.tf
+├── main.tf              ← S3 버킷 (의도적으로 정책 위반 상태로 시작)
 └── policy/
     ├── s3_public_access.rego
     └── required_tags.rego
 ```
+
+{{< callout type="info" >}}
+`main.tf`는 처음부터 끝까지 **하나의 파일**입니다. before/after 디렉터리를 나누지 않고, 정책 위반 상태로 시작한 같은 파일을 실습 중에 직접 수정해 통과 상태로 만듭니다. 버킷 이름은 전 세계에서 유일해야 하므로 `random_string.suffix` 리소스를 두고 `lab12-policy-as-code-app-${random_string.suffix.result}`처럼 접미사를 붙입니다. 이 때문에 `versions.tf`의 `required_providers`에도 `random` 프로바이더가 필요합니다. `policy/` 아래는 Sentinel이 아니라 OPA/Rego 정책 2개(`s3_public_access.rego`, `required_tags.rego`)뿐이며, `conftest`로 이 파일들을 평가합니다.
+{{< /callout >}}
 
 ---
 
@@ -85,6 +89,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
   }
 }
 ```
@@ -99,19 +107,29 @@ provider "aws" {
 
 ### main.tf — 처음에는 **일부러 위반 상태**로 작성
 
-정책 위반을 재현하기 위해 Public Access Block 없이, 태그도 불완전하게 시작합니다.
+정책 위반을 재현하기 위해 Public Access Block 없이, 태그도 불완전하게 시작합니다. 버킷 이름은 전역에서 유일해야 하므로 `random_string.suffix`를 붙입니다.
 
 ```hcl
+# 버킷 이름 중복 방지를 위한 무작위 접미사
+resource "random_string" "suffix" {
+  length  = 8
+  special = false
+  upper   = false
+}
+
+# 정책 위반을 재현하기 위해 일부러 미흡한 상태로 작성한 S3 버킷
+# Public Access Block 없음 + Environment/Owner 태그 누락 → conftest 정책 검사에서 deny
 resource "aws_s3_bucket" "app" {
-  bucket = "lab12-policy-as-code-app"
+  bucket = "lab12-policy-as-code-app-${random_string.suffix.result}"
 
   tags = {
     Name = "lab12-app"
-    # Environment, Owner 태그 없음 → 정책 위반
+    # Environment, Owner 태그 없음 → policy/required_tags.rego 위반
   }
 }
 
-# aws_s3_bucket_public_access_block 리소스 없음 → 정책 위반
+# aws_s3_bucket_public_access_block 리소스가 없음 → policy/s3_public_access.rego 위반
+# 실습 단계에서 이 리소스를 추가하고 태그를 보완하면 정책 검사를 통과한다.
 ```
 
 ### policy/s3_public_access.rego — S3 Public Access Block 필수
@@ -206,11 +224,11 @@ conftest test tfplan.json --policy policy/
 
 ### 코드 수정 — 정책 통과 상태로
 
-`main.tf`를 다음과 같이 수정합니다.
+`main.tf`의 `aws_s3_bucket.app` 태그를 보완하고, `aws_s3_bucket_public_access_block` 리소스를 추가합니다. (`random_string.suffix` 리소스는 그대로 둡니다.)
 
 ```hcl
 resource "aws_s3_bucket" "app" {
-  bucket = "lab12-policy-as-code-app"
+  bucket = "lab12-policy-as-code-app-${random_string.suffix.result}"
 
   tags = {
     Name        = "lab12-app"

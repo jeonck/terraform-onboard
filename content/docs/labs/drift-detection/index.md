@@ -53,19 +53,24 @@ flowchart TD
 
 ---
 
-## 파일 구조
+## 실습 파일 구성
 
 ```
 lab17-drift-detection/
 ├── versions.tf
 ├── providers.tf
-├── main.tf
+├── main.tf                                  ← random_string.suffix + aws_s3_bucket.app
+├── outputs.tf
 ├── scripts/
-│   └── check-drift.sh
+│   └── check-drift.sh                       ← terraform plan -detailed-exitcode 래퍼
 └── .github/
     └── workflows/
-        └── drift-detection.yml
+        └── drift-detection.yml              ← 매일 자정 cron + workflow_dispatch
 ```
+
+{{< callout type="info" >}}
+`main.tf`는 `random_string.suffix` 리소스를 두고 S3 버킷 이름에 붙입니다. S3 버킷 이름은 전 세계에서 유일해야 하므로, 리터럴 이름(`lab17-drift-detection-app`)을 그대로 쓰면 다른 사용자의 버킷과 충돌해 `BucketAlreadyExists` 오류가 발생합니다. 이 때문에 `versions.tf`에도 `random` 프로바이더가 추가로 필요합니다.
+{{< /callout >}}
 
 ---
 
@@ -82,6 +87,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
   }
 }
 ```
@@ -97,14 +106,36 @@ provider "aws" {
 ### main.tf
 
 ```hcl
+# 버킷 이름 중복 방지를 위한 무작위 접미사
+resource "random_string" "suffix" {
+  length  = 8
+  special = false
+  upper   = false
+}
+
+# 드리프트 탐지 대상 S3 버킷
 resource "aws_s3_bucket" "app" {
-  bucket = "lab17-drift-detection-app"
+  bucket = "lab17-drift-detection-app-${random_string.suffix.result}"
 
   tags = {
     Name        = "lab17-app"
     Environment = "dev"
     ManagedBy   = "terraform"
   }
+}
+```
+
+### outputs.tf
+
+```hcl
+output "bucket_name" {
+  description = "드리프트 탐지 대상 S3 버킷 이름"
+  value       = aws_s3_bucket.app.id
+}
+
+output "bucket_arn" {
+  description = "드리프트 탐지 대상 S3 버킷 ARN"
+  value       = aws_s3_bucket.app.arn
 }
 ```
 
@@ -144,15 +175,21 @@ name: Drift Detection
 
 on:
   schedule:
-    - cron: '0 0 * * *'   # 매일 00:00 UTC (KST 09:00)
-  workflow_dispatch:        # 수동 실행도 허용
+    - cron: "0 0 * * *" # 매일 00:00 UTC (KST 09:00)
+  workflow_dispatch: # 수동 실행도 허용
+
+env:
+  TF_VERSION: "1.9.0"
+  AWS_REGION: ${{ secrets.AWS_REGION }}
 
 permissions:
+  id-token: write # OIDC 토큰 발급에 필요
   contents: read
-  issues: write             # Issue 생성 권한
+  issues: write # Issue 생성 권한
 
 jobs:
   drift-check:
+    name: Detect Drift
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -162,17 +199,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_wrapper: false   # exit code를 직접 받기 위해 wrapper 비활성화
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-northeast-2
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false # exit code를 직접 받기 위해 wrapper 비활성화
 
       - name: Terraform Init
         run: terraform init
@@ -254,8 +291,11 @@ echo $?   # 0
 
 ```bash
 # 누군가 콘솔에서 태그를 바꿨다고 가정 (aws cli로 시뮬레이션)
+# 버킷 이름은 random_string 접미사가 붙으므로 output에서 가져온다
+BUCKET=$(terraform output -raw bucket_name)
+
 aws s3api put-bucket-tagging \
-  --bucket lab17-drift-detection-app \
+  --bucket "$BUCKET" \
   --tagging 'TagSet=[{Key=Name,Value=lab17-app},{Key=Environment,Value=prod-CHANGED},{Key=ManagedBy,Value=terraform}]'
 ```
 
@@ -275,6 +315,12 @@ terraform apply -auto-approve
 bash scripts/check-drift.sh
 echo $?   # 0 ← 정상 복구
 ```
+
+### GitHub Secrets 확인 (OIDC)
+
+이 워크플로는 [Lab 08](../github-actions/)에서 만든 OIDC IAM Role을 그대로 재사용합니다. 저장소 → Settings → Secrets and variables → Actions에 아래 두 개가 이미 등록되어 있어야 합니다.
+- `AWS_ROLE_ARN`: Lab 08 bootstrap output의 Role ARN
+- `AWS_REGION`: `ap-northeast-2`
 
 ### GitHub Actions 워크플로 등록
 
