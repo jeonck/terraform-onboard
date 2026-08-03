@@ -454,4 +454,4 @@ terraform destroy -auto-approve
 
 ---
 
-→ 실습을 모두 마쳤다면: [운영 체크리스트](../../08-ops/checklist/)로 실무 투입 준비 상태를 점검하세요.
+→ 다음 실습: [Lab 19 Kubernetes(EKS) 프로비저닝](../eks-kubernetes/) — 같은 컨테이너 워크로드를 K8s 표준 위에서, 클러스터 프로비저닝부터 파드 배포까지
