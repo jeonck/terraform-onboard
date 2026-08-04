@@ -30,13 +30,13 @@ jobs:
           && sudo dpkg -i ${{ runner.temp }}/hugo.deb
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: false
           fetch-depth: 0
 
       - name: Cache Hugo resources
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: /tmp/hugo_cache
           key: hugo-resources-${{ env.HUGO_VERSION }}-${{ hashFiles('hugo.toml') }}
@@ -46,20 +46,20 @@ jobs:
 
       - name: Setup Pages
         id: pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       - name: Build with Hugo
         env:
           HUGO_CACHEDIR: /tmp/hugo_cache
           HUGO_ENVIRONMENT: production
         run: |
-          hugo --minify
           # baseURL은 hugo.toml의 커스텀 도메인 값을 사용한다.
           # configure-pages의 base_url은 인증서 발급 전 http:// 로 내려오기 때문에
           # 이를 덮어쓰면 http 절대경로가 사이트에 박힌다.
+          hugo --minify
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: ./public
 
@@ -72,4 +72,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
