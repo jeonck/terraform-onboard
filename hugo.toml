@@ -1,4 +1,4 @@
-baseURL = "https://jeonck.github.io/terraform-onboard/"
+baseURL = "https://terraform.metacog.co.kr/"
 title = "Terraform 실무 온보딩 가이드"
 theme = "hextra"
 defaultContentLanguage = "ko"
