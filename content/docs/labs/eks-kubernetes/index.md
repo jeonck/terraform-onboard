@@ -834,4 +834,4 @@ terraform destroy -auto-approve
 
 ---
 
-→ 실습을 모두 마쳤다면: [운영 체크리스트](../../08-ops/checklist/)로 실무 투입 준비 상태를 점검하세요.
+→ 다음 실습: [Lab 20 온프렘형 3-Node K8s 클러스터 구축](../onprem-k8s/) — 관리형이 아닌, 밑바닥부터 직접 만드는 Kubernetes

@@ -33,12 +33,13 @@ weight: 11
 | [Lab 17](drift-detection) | **드리프트 탐지 자동화** | 40분 | 운영 |
 | [Lab 18](ecs-container) | **ECS 컨테이너 서비스 배포** | 45분 | 컨테이너 |
 | [Lab 19](eks-kubernetes) | **Kubernetes(EKS) 프로비저닝** | 60분 | 컨테이너 |
+| [Lab 20](onprem-k8s) | **온프렘형 3-Node K8s 클러스터 구축** | 60분 | 온프렘 |
 
 ---
 
 ## 실무 JD 기반 역량 매핑 {#jd-mapping}
 
-Lab 11~19는 LinkedIn의 실제 Terraform 채용공고(Terraform Infrastructure Engineer, Senior Terraform Engineer, Cloud Terraform Engineer, DevSecOps Specialist, SRE 등 11건)를 분석해, 현업에서 반복적으로 요구되는 역량을 실습으로 옮긴 것입니다. 각 랩의 "이 랩이 입증하는 실무 역량" 섹션에서 원문 JD 인용을 확인할 수 있습니다.
+Lab 11~20은 LinkedIn의 실제 Terraform 채용공고(Terraform Infrastructure Engineer, Senior Terraform Engineer, Cloud Terraform Engineer, DevSecOps Specialist, SRE 등 11건)를 분석해, 현업에서 반복적으로 요구되는 역량을 실습으로 옮긴 것입니다. 각 랩의 "이 랩이 입증하는 실무 역량" 섹션에서 원문 JD 인용을 확인할 수 있습니다.
 
 | 채용공고 요구 역량 | 원문 표현 (JD 인용) | 대응 Lab |
 |---|---|---|
@@ -51,7 +52,8 @@ Lab 11~19는 LinkedIn의 실제 Terraform 채용공고(Terraform Infrastructure 
 | 테스트 주도 인프라 개발 | "Test-Driven Development (TDD)" | [Lab 16](terraform-test) |
 | 안전한 운영 자동화 | "safe, scalable cloud automation" | [Lab 10](state-recovery), [Lab 17](drift-detection) |
 | 컨테이너 오케스트레이션 | "VPC, EC2, ECS, EKS, IAM, S3, and SQS" | [Lab 18](ecs-container), [Lab 19](eks-kubernetes) |
-| Kubernetes 환경 구성·운영 | "Configure and manage Kubernetes environments" | [Lab 19](eks-kubernetes) |
+| Kubernetes 환경 구성·운영 | "Configure and manage Kubernetes environments" | [Lab 19](eks-kubernetes), [Lab 20](onprem-k8s) |
+| 온프렘·하이브리드 인프라 | "on-premises and AWS infrastructure" | [Lab 20](onprem-k8s) |
 | CI/CD 파이프라인 통합 | "Integrate Terraform into CI/CD pipelines" | [Lab 08](github-actions), [Lab 09](security-scan) |
 | State 운영·복구 | "support production infrastructure changes" | [Lab 06](remote-state), [Lab 10](state-recovery) |
 
